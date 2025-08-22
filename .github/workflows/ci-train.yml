@@ -31,3 +31,9 @@ jobs:
     - name: Run the training script
       run: |
         python train/train.py  # Run the training script in the 'train' folder
+    
+    - name: Upload trained model artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: trained-model
+        path: model/*.pkl
