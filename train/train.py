@@ -10,18 +10,14 @@ import xgboost as xgb
 
 # Load dataset
 def load_data():
-    # Get the current script directory and project root
     current_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(current_dir)  # Going up one level from 'train' folder
-
-    # Construct paths relative to the project root
     data_path = os.path.join(project_root, 'data', 'Advertising.csv')
 
-    # Load the data
     df = pd.read_csv(data_path)
     df = df.dropna()
-    
-    # Outlier handling (IQR method)
+
+    # Outlier handling using IQR
     def remove_outliers_iqr(data, cols):
         cleaned = data.copy()
         for col in cols:
@@ -32,7 +28,7 @@ def load_data():
             upper = Q3 + 1.5 * IQR
             cleaned = cleaned[(cleaned[col] >= lower) & (cleaned[col] <= upper)]
         return cleaned
-    
+
     df = remove_outliers_iqr(df, ["TV", "Radio", "Newspaper", "Sales"])
 
     # Feature engineering
@@ -44,7 +40,6 @@ def load_data():
     df["Radio_Sq"] = df["Radio"] ** 2
     df["Newspaper_Sq"] = df["Newspaper"] ** 2
 
-    # Features & Target
     X = df[[ 
         "TV", "Radio", "Newspaper", 
         "Total_Spend", 
@@ -55,7 +50,7 @@ def load_data():
 
     return X, y
 
-# Function to find the best model based on the metrics
+# Function to compare and choose best model
 def find_best_model(X_train, X_test, y_train, y_test):
     models = {
         "Linear Regression": LinearRegression(),
@@ -66,17 +61,15 @@ def find_best_model(X_train, X_test, y_train, y_test):
 
     results = {}
 
-    # Train each model and evaluate
     for model_name, model in models.items():
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
-        
-        # Evaluate the model
+
         mae = mean_absolute_error(y_test, y_pred)
         rmse = np.sqrt(mean_squared_error(y_test, y_pred))
         r2 = r2_score(y_test, y_pred)
         mape = np.mean(np.abs((y_test - y_pred) / y_test)) * 100
-        
+
         results[model_name] = {
             "MAE": mae,
             "RMSE": rmse,
@@ -84,46 +77,42 @@ def find_best_model(X_train, X_test, y_train, y_test):
             "MAPE": mape
         }
 
-    # Convert results to a DataFrame for comparison
     results_df = pd.DataFrame(results).T
-    print("Model Comparison:")
+    print("📊 Model Comparison:")
     print(results_df)
 
-    # Select the best model based on the lowest MAE (or RMSE)
-    best_model_name = results_df["MAE"].idxmin()  # Choosing the model with the lowest MAE as the best model
+    best_model_name = results_df["MAE"].idxmin()
     best_model = models[best_model_name]
 
     return best_model_name, best_model
 
-# Function to train the best model on the entire dataset and save it
+# Function to train the best model on the full dataset and save it
 def train_and_save_best_model(best_model, X, y):
-    # Train the best model on the entire dataset
     best_model.fit(X, y)
 
-    # Save the best model as a .pkl file with the model name
-    model = os.path.join(project_root, 'model')
-    os.makedirs("model", exist_ok=True)
-    model_filename = f"model/{best_model.__class__.__name__.lower()}_model.pkl"  # Save with model name
+    # Set up path for saving
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(current_dir)
+    model_dir = os.path.join(project_root, 'model')
+    os.makedirs(model_dir, exist_ok=True)
+
+    # Save using model class name
+    model_filename = os.path.join(model_dir, f"{best_model.__class__.__name__.lower()}_model.pkl")
     joblib.dump(best_model, model_filename)
 
     print(f"✅ Best Model saved to '{model_filename}'")
 
-# Main function to execute the workflow
+# Main function
 def main():
-    # Load data
     X, y = load_data()
 
-    # Split the data into training (80%) and testing (20%) sets
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # Step 1: Find the best model
     best_model_name, best_model = find_best_model(X_train, X_test, y_train, y_test)
 
-    # Step 2: Train the best model on the full dataset and save the model
     train_and_save_best_model(best_model, X, y)
 
-    print(f"Best Model: {best_model_name}")
+    print(f"🏆 Best Model Selected: {best_model_name}")
 
-# Run the main function
 if __name__ == "__main__":
     main()
