@@ -10,10 +10,14 @@ import xgboost as xgb
 
 # Load dataset
 def load_data():
-    # Relative path to the dataset
-    data_path = os.path.join("data", "Advertising.csv")
+    # Get the current script directory and project root
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(current_dir)  # Going up one level from 'train' folder
 
-    # Load dataset using the relative path
+    # Construct paths relative to the project root
+    data_path = os.path.join(project_root, 'data', 'Advertising.csv')
+
+    # Load the data
     df = pd.read_csv(data_path)
     df = df.dropna()
     
@@ -97,6 +101,7 @@ def train_and_save_best_model(best_model, X, y):
     best_model.fit(X, y)
 
     # Save the best model as a .pkl file with the model name
+    model = os.path.join(project_root, 'model')
     os.makedirs("model", exist_ok=True)
     model_filename = f"model/{best_model.__class__.__name__.lower()}_model.pkl"  # Save with model name
     joblib.dump(best_model, model_filename)
