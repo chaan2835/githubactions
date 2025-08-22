@@ -10,7 +10,11 @@ import xgboost as xgb
 
 # Load dataset
 def load_data():
-    df = pd.read_csv("data/Advertising.csv")
+    # Relative path to the dataset
+    data_path = os.path.join("data", "Advertising.csv")
+
+    # Load dataset using the relative path
+    df = pd.read_csv(data_path)
     df = df.dropna()
     
     # Outlier handling (IQR method)
