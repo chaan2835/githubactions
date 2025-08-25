@@ -11,13 +11,12 @@ import xgboost as xgb
 # Load dataset
 def load_data():
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.dirname(current_dir)  # Going up one level from 'train' folder
+    project_root = os.path.dirname(current_dir)
     data_path = os.path.join(project_root, 'data', 'Advertising.csv')
 
     df = pd.read_csv(data_path)
     df = df.dropna()
 
-    # Outlier handling using IQR
     def remove_outliers_iqr(data, cols):
         cleaned = data.copy()
         for col in cols:
@@ -50,7 +49,7 @@ def load_data():
 
     return X, y
 
-# Function to compare and choose best model
+# Compare models and select best one
 def find_best_model(X_train, X_test, y_train, y_test):
     models = {
         "Linear Regression": LinearRegression(),
@@ -81,35 +80,47 @@ def find_best_model(X_train, X_test, y_train, y_test):
     print("📊 Model Comparison:")
     print(results_df)
 
+    # Save metrics to a file
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(current_dir)
+    metrics_dir = os.path.join(project_root, 'metrics')
+    os.makedirs(metrics_dir, exist_ok=True)
+    metrics_file = os.path.join(metrics_dir, 'metrics.txt')
+
+    with open(metrics_file, 'w') as f:
+        for model_name, metrics in results.items():
+            f.write(f"Model: {model_name}\n")
+            for metric_name, value in metrics.items():
+                f.write(f"{metric_name}: {value:.4f}\n")
+            f.write("\n")
+
+    print(f"📁 Metrics saved to '{metrics_file}'")
+
     best_model_name = results_df["MAE"].idxmin()
     best_model = models[best_model_name]
 
     return best_model_name, best_model
 
-# Function to train the best model on the full dataset and save it
+# Save best model
 def train_and_save_best_model(best_model, X, y):
     best_model.fit(X, y)
 
-    # Set up path for saving
     current_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(current_dir)
     model_dir = os.path.join(project_root, 'model')
     os.makedirs(model_dir, exist_ok=True)
 
-    # Save using model class name
     model_filename = os.path.join(model_dir, f"{best_model.__class__.__name__.lower()}_model.pkl")
     joblib.dump(best_model, model_filename)
 
     print(f"✅ Best Model saved to '{model_filename}'")
 
-# Main function
+# Main
 def main():
     X, y = load_data()
-
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     best_model_name, best_model = find_best_model(X_train, X_test, y_train, y_test)
-
     train_and_save_best_model(best_model, X, y)
 
     print(f"🏆 Best Model Selected: {best_model_name}")
