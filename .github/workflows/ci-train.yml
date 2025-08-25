@@ -8,6 +8,8 @@ on:
     paths:
       - 'data/**'
       - 'train/**'
+      - 'tests/**'
+      - '.github/workflows/ci-train.yml'
       - 'requirements.txt'
 
 jobs:
@@ -43,3 +45,9 @@ jobs:
       with:
         name: metrics
         path: metrics/*.txt
+
+    - name: Run inference tests
+      run: |
+        pip install pytest
+        pytest tests/test_inference.py
+
