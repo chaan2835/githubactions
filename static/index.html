@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sales Prediction</title>
+</head>
+<body>
+  <h2>Advertising Spend Slider</h2>
+
+  <label for="tvSlider">TV: <span id="tvValue">50</span></label><br />
+  <input type="range" id="tvSlider" min="0" max="300" value="50" />
+
+  <br /><br />
+
+  <label for="radioSlider">Radio: <span id="radioValue">50</span></label><br />
+  <input type="range" id="radioSlider" min="0" max="100" value="50" />
+
+  <br /><br />
+
+  <label for="newspaperSlider">Newspaper: <span id="newspaperValue">50</span></label><br />
+  <input type="range" id="newspaperSlider" min="0" max="100" value="50" />
+
+  <br /><br />
+
+  <button onclick="makePrediction()">Predict Sales</button>
+
+  <h3>Prediction Result:</h3>
+  <div id="result">No prediction yet.</div>
+
+  <script>
+    // Update slider labels on input
+    const tvSlider = document.getElementById('tvSlider');
+    const radioSlider = document.getElementById('radioSlider');
+    const newspaperSlider = document.getElementById('newspaperSlider');
+
+    const tvValue = document.getElementById('tvValue');
+    const radioValue = document.getElementById('radioValue');
+    const newspaperValue = document.getElementById('newspaperValue');
+
+    tvSlider.oninput = () => tvValue.textContent = tvSlider.value;
+    radioSlider.oninput = () => radioValue.textContent = radioSlider.value;
+    newspaperSlider.oninput = () => newspaperValue.textContent = newspaperSlider.value;
+
+    async function makePrediction() {
+      const data = {
+        TV: parseFloat(tvSlider.value),
+        Radio: parseFloat(radioSlider.value),
+        Newspaper: parseFloat(newspaperSlider.value)
+      };
+
+      try {
+        const response = await fetch('http://localhost:8000/predict', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          document.getElementById('result').textContent = `Predicted Sales: ${result.predicted_sales.toFixed(2)}`;
+        } else {
+          document.getElementById('result').textContent = `Error: ${result.detail || 'Unknown error'}`;
+        }
+      } catch (error) {
+        document.getElementById('result').textContent = `Error: ${error.message}`;
+      }
+    }
+  </script>
+</body>
+</html>

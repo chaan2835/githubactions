@@ -1,78 +1,76 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-import pickle
+from pydantic import BaseModel
 import numpy as np
+import pickle
 import os
 
 app = FastAPI()
 
-# Load model
-model_path = "model/xgbregressor_model.pkl"
-with open(model_path, "rb") as f:
+# Mount static directory to serve frontend files
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Serve the HTML file at root path "/"
+@app.get("/")
+def serve_index():
+    return FileResponse("static/index.html")
+
+# Load model at startup
+with open("model/xgbregressor_model.pkl", "rb") as f:
     model = pickle.load(f)
 
-@app.get("/", response_class=HTMLResponse)
-async def home():
-    html = """
-    <html>
-    <head>
-        <title>Model Prediction</title>
-    </head>
-    <body>
-        <h2>Adjust Advertising Budgets:</h2>
-
-        <label>TV: <span id="tv_val">100</span></label><br>
-        <input type="range" min="0" max="300" value="100" id="tv" oninput="updateValue()"><br><br>
-
-        <label>Radio: <span id="radio_val">20</span></label><br>
-        <input type="range" min="0" max="100" value="20" id="radio" oninput="updateValue()"><br><br>
-
-        <label>Newspaper: <span id="news_val">30</span></label><br>
-        <input type="range" min="0" max="100" value="30" id="news" oninput="updateValue()"><br><br>
-
-        <h3>Predicted Sales: <span id="prediction">--</span></h3>
-
-        <script>
-            function updateValue() {
-                document.getElementById("tv_val").innerText = document.getElementById("tv").value;
-                document.getElementById("radio_val").innerText = document.getElementById("radio").value;
-                document.getElementById("news_val").innerText = document.getElementById("news").value;
-
-                fetch('/predict', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        TV: parseFloat(document.getElementById("tv").value),
-                        Radio: parseFloat(document.getElementById("radio").value),
-                        Newspaper: parseFloat(document.getElementById("news").value)
-                    }),
-                })
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById("prediction").innerText = data.prediction.toFixed(2);
-                });
-            }
-
-            window.onload = updateValue;
-        </script>
-    </body>
-    </html>
-    """
-    return HTMLResponse(content=html)
-
-# Predict endpoint
-from pydantic import BaseModel
-
-class AdData(BaseModel):
+class InputData(BaseModel):
     TV: float
     Radio: float
     Newspaper: float
 
+@app.get("/predict")
+def predict_get(
+    TV: float = Query(...),
+    Radio: float = Query(...),
+    Newspaper: float = Query(...)
+):
+    try:
+        Total_Spend = TV + Radio + Newspaper
+        TV_Radio = TV * Radio
+        TV_Newspaper = TV * Newspaper
+        Radio_Newspaper = Radio * Newspaper
+        TV_Sq = TV ** 2
+        Radio_Sq = Radio ** 2
+        Newspaper_Sq = Newspaper ** 2
+
+        input_features = np.array([[
+            TV, Radio, Newspaper,
+            Total_Spend,
+            TV_Radio, TV_Newspaper, Radio_Newspaper,
+            TV_Sq, Radio_Sq, Newspaper_Sq
+        ]])
+
+        prediction = model.predict(input_features)[0]
+        return {"predicted_sales": float(prediction)}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @app.post("/predict")
-def predict(data: AdData):
-    input_array = np.array([[data.TV, data.Radio, data.Newspaper]])
-    prediction = model.predict(input_array)[0]
-    return {"prediction": prediction}
+def predict_post(data: InputData):
+    try:
+        Total_Spend = data.TV + data.Radio + data.Newspaper
+        TV_Radio = data.TV * data.Radio
+        TV_Newspaper = data.TV * data.Newspaper
+        Radio_Newspaper = data.Radio * data.Newspaper
+        TV_Sq = data.TV ** 2
+        Radio_Sq = data.Radio ** 2
+        Newspaper_Sq = data.Newspaper ** 2
+
+        input_features = np.array([[
+            data.TV, data.Radio, data.Newspaper,
+            Total_Spend,
+            TV_Radio, TV_Newspaper, Radio_Newspaper,
+            TV_Sq, Radio_Sq, Newspaper_Sq
+        ]])
+
+        prediction = model.predict(input_features)[0]
+        return {"predicted_sales": float(prediction)}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
