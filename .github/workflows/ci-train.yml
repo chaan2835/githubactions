@@ -37,3 +37,9 @@ jobs:
       with:
         name: trained-model
         path: model/*.pkl
+    
+    - name: Upload metrics file
+      uses: actions/upload-artifact@v4
+      with:
+        name: metrics
+        path: metrics/*.txt
